@@ -54,6 +54,7 @@ $string['link']                  = 'Quick link';
 $string['units']                 = 'Units';
 $string['courses']               = 'Courses';
 $string['year']                  = 'Year';
+$string['year_unknown']          = 'Year unknown (data missing from IDM)';
 
 // Tab links:
 $string['coursesview']           = 'Courses';
@@ -64,4 +65,8 @@ $string['course_home']           = 'Course home';
 $string['programme_home']        = 'Programme home';
 $string['years_and_units']       = 'Show units';
 $string['programme_courses']     = 'Show courses';
+
+// User capabilities
+$string['programme_level:can_edit'] = 'Can edit';
+$string['programme_level:show_hidden_courses'] = 'Show hidden courses';
 

@@ -36,15 +36,17 @@ class block_programme_level_renderer extends plugin_renderer_base {
     private $trimmode = block_programme_level::TRIM_RIGHT;
     private $trimlength = 50;
     private $courseid = 0;
+    private $showhiddencourses = false;
 
     /**
      * Prints programme level tree view
      * @return string
      */
-    public function programme_level_tree($trimmode, $trimlength, $courseid) {
+    public function programme_level_tree($trimmode, $trimlength, $courseid, $showhiddencourses) {
         $this->trimmode = $trimmode;
         $this->trimlength = $trimlength;
         $this->courseid = $courseid;
+        $this->showhiddencourses = $showhiddencourses;
 
         return $this->render(new programme_level_tree);
     }
@@ -61,15 +63,20 @@ class block_programme_level_renderer extends plugin_renderer_base {
 
         $module = array('name'=>'block_programme_level', 'fullpath'=>'/blocks/programme_level/module.js', 'requires'=>array('yui2-treeview'));
 
-        if (empty($tree) ) {
-            $html = $this->output->box(get_string('noprogrammes', 'block_programme_level'));
-        } else {
+        $html = ""; // Start with an empty string.
 
+        $displayed_something = false;
+        if (!empty($tree->courses) ){
             $htmlid = 'programme_level_tree_'.uniqid();
             $this->page->requires->js_init_call('M.block_programme_level.init_tree', array(false, $htmlid));
             $html = '<div id="'.$htmlid.'">';
             $html .= $this->htmllize_tree($tree->courses);
             $html .= '</div>';
+            $displayed_something = true;
+        }
+
+        if(!$displayed_something) {
+            $html .= $this->output->box(get_string('noprogrammes', 'block_programme_level'));
         }
 
         // Add 'View all programmes' link to bottom of block...
@@ -99,32 +106,40 @@ class block_programme_level_renderer extends plugin_renderer_base {
 
         if(!empty($tree)) {
             foreach ($tree as $node) {
+                $visible = $node->get_visible();
 
                 $course_fullname = $this->trim($node->get_fullname());
                 // Fix to bug UALMOODLE-58: look for ampersand in fullname and replace it with entity
                 $course_fullname = preg_replace('/&(?![#]?[a-z0-9]+;)/i', "&amp;$1", $course_fullname);
 
                 $attributes = array('title'=>$course_fullname);
-                if($node->get_user_enrolled() == true) {
+                $content = '';
+
+                if(($node->get_user_enrolled() == true) && ($visible == true)) {
                     $moodle_url = $CFG->wwwroot.'/course/view.php?id='.$node->get_moodle_course_id();
-                    $content = html_writer::link($moodle_url, $course_fullname, $attributes);
+                    $content .= html_writer::link($moodle_url, $course_fullname, $attributes);
                 } else {
                     // Display the name but it's not clickable...
                     // TODO make this a configuration option...
-                    $content = html_writer::tag('i', $course_fullname);
+                    $i_attributes = array();
+                	if($this->showhiddencourses) {
+                		$i_attributes['class'] = 'hidden';
+                	}
+                    $content .= html_writer::tag('i', $course_fullname, $i_attributes);
                 }
 
                 $children = $node->get_children();
                 $parents = $node->get_parents();
 
                 if(empty($children)) {
-                    // if this course has parents and indent>0 then display it.
-                    if($indent>0) {
-                        $result .= html_writer::tag('li', $content, $attributes);
-                    } elseif (empty($parents)) {
-                        $result .= html_writer::tag('li', $content, $attributes);
+                    if($visible || $this->showhiddencourses) {
+                        // if this course has parents and indent>0 then display it.
+                        if($indent>0) {
+                            $result .= html_writer::tag('li', $content, $attributes);
+                        } elseif (empty($parents)) {
+                            $result .= html_writer::tag('li', $content, $attributes);
+                        }
                     }
-
                 } else {
                     // if this has parents OR it doesn't have parents or children then we need to display it...???
                     $result .= html_writer::tag('li', $content.$this->htmllize_tree($children, $indent+1), $attributes);
